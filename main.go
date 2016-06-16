@@ -108,7 +108,7 @@ func parseJSON() {
 }
 
 func getEvents() {
-	encoded := "NmM1MzE1M2M2MWUwNDMzODNiMTU6YTc3MjFhMjYtNTAxOS00MWU0LWFmZjItZWVhNzgxYzA2NjlmCg=="
+	encoded := ""
 	decodeCredentials(encoded)
 	// ========================================
 	client := &http.Client{}
