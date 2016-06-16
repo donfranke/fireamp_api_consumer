@@ -12,11 +12,11 @@ import (
 )
 
 type Result struct {
-	timestamp 			string
-	event_type          string
-	computer            string
-	detection           string
-	disposition         string
+	timestamp   string
+	event_type  string
+	computer    string
+	detection   string
+	disposition string
 }
 
 type FireAMP struct {
@@ -102,7 +102,7 @@ func parseJSON() {
 		//r.detection = item.Detection
 		//r.disposition = item.Disposition
 		//results.append(r)
-		
+
 		fmt.Printf("%s|%s|%s|%s|%s\n", item.Date, item.EventType, item.Computer.Hostname, item.Detection, item.File.Disposition)
 	}
 }
@@ -136,7 +136,7 @@ func pushToSplunk() {
 	// iterate result struct array
 	//   build content string
 	//   send content string to splunk forwarder
-	
+
 	// example
 	// timestamp,detection_timestamp,threat_type,computer,detection,disposition
 }
