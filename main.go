@@ -9,117 +9,95 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"flag"
+	"os"
+	"time"
+	"strconv"
+	"bufio"
 )
 
-type Result struct {
-	timestamp   string
-	event_type  string
-	computer    string
-	detection   string
-	disposition string
-}
+const C_INTERVAL = 60
 
-type FireAMP struct {
-	Data []struct {
-		Computer struct {
-			Active        bool   `json:"active"`
-			ConnectorGUID string `json:"connector_guid"`
-			Hostname      string `json:"hostname"`
-			Links         struct {
-				Computer   string `json:"computer"`
-				Group      string `json:"group"`
-				Trajectory string `json:"trajectory"`
-			} `json:"links"`
-			User string `json:"user"`
-		} `json:"computer"`
-		Date        string `json:"date"`
-		Detection   string `json:"detection"`
-		DetectionID int    `json:"detection_id"`
-		EventType   string `json:"event_type"`
-		EventTypeID int    `json:"event_type_id"`
-		File        struct {
-			Disposition string `json:"disposition"`
-			FileName    string `json:"file_name"`
-			FilePath    string `json:"file_path"`
-			Identity    struct {
-				Sha256 string `json:"sha256"`
-			} `json:"identity"`
-			Parent struct {
-				Disposition string `json:"disposition"`
-				FileName    string `json:"file_name"`
-				Identity    struct {
-					Sha256 string `json:"sha256"`
-				} `json:"identity"`
-			} `json:"parent"`
-		} `json:"file"`
-		GroupGuids           []string `json:"group_guids"`
-		ID                   int      `json:"id"`
-		Timestamp            int      `json:"timestamp"`
-		TimestampNanoseconds int      `json:"timestamp_nanoseconds"`
-	} `json:"data"`
-	Metadata struct {
-		Links struct {
-			Next string `json:"next"`
-			Self string `json:"self"`
-		} `json:"links"`
-		Results struct {
-			CurrentItemCount int `json:"current_item_count"`
-			Index            int `json:"index"`
-			ItemsPerPage     int `json:"items_per_page"`
-			Total            int `json:"total"`
-		} `json:"results"`
-	} `json:"metadata"`
-	Version string `json:"version"`
-}
 
 func main() {
 	log.Print("Starting")
-	// 1. get events from FireAMP API
-	//getEvents()
-	// 2. pass results of API call to create struct array
-	parseJSON()
+	clientID := flag.String("c","", "3rd Party API Client ID")
+	APIKey := flag.String("a", "", "API Key")
+	flag.Parse()
+
+	for {
+		callAPI(*clientID,*APIKey)
+		time.Sleep(time.Second * C_INTERVAL)
+	}
+
+	//callAPI(*clientID,*APIKey)
 	// 3. iterate struct array and push to splunk forwarder
-	//pushEventsToSplunk()
+	
 }
 
-func parseJSON() {
+func callAPI(clientID string, APIKey string) {
+	// 1. get events from FireAMP API
+	apiresult := getEvents(clientID,APIKey)
+	// 2. pass results of API call to create struct array
+	results := parseJSON(apiresult)
+	// 3. write to log file for splunk forwarder to pick up
+	pushToSplunk(results)
+}
 
+func parseJSON(jsondata []byte) []Result{
 	// sample data
-	//r := Result{}
-	//var results []Result
+	r := Result{}
+	var results []Result
 
-	jsondata := `{}`
-	res := &FireAMP{}
+	//jsondata := `{}`
+	res := &FireAMP_Event{}
 	err := json.Unmarshal([]byte(jsondata), res)
 	if err != nil {
 		log.Fatal(err)
 	}
 	a1 := res.Data
 	for _, item := range a1 {
-		//r.timestamp = item.Date
-		//r.event_type = item.EventType
-		//r.computer = item.Computer.Hostname
-		//r.detection = item.Detection
-		//r.disposition = item.Disposition
-		//results.append(r)
+		r.timestamp = item.Date
+		r.id = item.ID
+		r.event_type = item.EventType
+		r.computer = item.Computer.Hostname
+		r.detection = item.Detection
+		r.disposition = item.File.Disposition
+		r.filename = item.File.FileName
+		r.file_Sha256 = item.File.Identity.Sha256
+		results = append(results, r)
 
-		fmt.Printf("%s|%s|%s|%s|%s\n", item.Date, item.EventType, item.Computer.Hostname, item.Detection, item.File.Disposition)
+		//fmt.Println(item)
+		//fmt.Printf("%s|%s|%s|%s|%s|%s|%s|%s\n", item.Date, strconv.Itoa(item.ID), item.EventType, item.Computer.Hostname, item.Detection, item.File.Disposition,r.filename,r.file_Sha256 )
 	}
+	return results
 }
 
-func getEvents() {
-	encoded := ""
-	decodeCredentials(encoded)
+func getEvents(clientid string, apikey string) []byte {
+	//encoded := ""
+	//decodeCredentials(encoded)
 	// ========================================
 	client := &http.Client{}
-	url := "https://api.amp.cisco.com/v1/computers"
+
+	// ISO8601 2015-10-01T00:00:00+00:00
+	t := time.Now()
+	//then := t.AddDate(0, 0, -14)  // use this for testing purposes only
+	then := t.Add(time.Second * C_INTERVAL * -1)
+	start_date := then.Format(time.RFC3339)
+
+	//fmt.Println(start_date)
+	//url := "https://api.amp.cisco.com/v1/computers?limit=1"
+	//url := "https://api.amp.cisco.com/v1/events?limit=1"
+	url := "https://api.amp.cisco.com/v1/events?limit=4&start_date=" + start_date + "&event_type[]=1090519054"
+	//url := "https://api.amp.cisco.com/v1/events?limit=8&start_date=" + start_date
+	fmt.Println(url)
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", encoded)
-
+	//req.Header.Add("Authorization", encoded)
+	
 	//fmt.Println(req)
-	//req.SetBasicAuth(u,p) // this uses base 64 encoding, which doesn't currently work
+	req.SetBasicAuth(clientid,apikey) // this uses base 64 encoding, which doesn't currently work
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -127,11 +105,34 @@ func getEvents() {
 	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
-	fmt.Printf("%s\n", body)
+	//fmt.Printf("%s\n\n", body)
+	//os.Exit(0)
+
+	return body
 }
 
-func pushToSplunk() {
+func pushToSplunk(r []Result) {
+
+	f, err := os.OpenFile("/tmp/fireamp_events.log", os.O_APPEND|os.O_WRONLY,0600)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	w := bufio.NewWriter(f)
+
+    //n4, err := w.WriteString("buffered\n")
+
+
 	//var content string
+	for i:=0;i<len(r);i++ {
+		rr := r[i]
+		s := rr.timestamp + "," + strconv.Itoa(rr.id) + "," + rr.event_type + "," + rr.computer + "," + rr.detection + "," + rr.disposition + "," + rr.filename + "," + rr.file_Sha256
+		w.WriteString(s + "\n")
+		fmt.Println(i,s)
+	}
+	_ = err
+	w.Flush()
+	defer f.Close()
 
 	// iterate result struct array
 	//   build content string
