@@ -12,47 +12,11 @@ type Result struct {
 }
 
 type FireAMP_Event struct {
-	Data []struct {
-		Computer struct {
-			Active        bool   `json:"active"`
-			ConnectorGUID string `json:"connector_guid"`
-			Hostname      string `json:"hostname"`
-			Links         struct {
-				Computer   string `json:"computer"`
-				Group      string `json:"group"`
-				Trajectory string `json:"trajectory"`
-			} `json:"links"`
-			User string `json:"user"`
-		} `json:"computer"`
-		Date        string `json:"date"`
-		Detection   string `json:"detection"`
-		DetectionID int    `json:"detection_id"`
-		EventType   string `json:"event_type"`
-		EventTypeID int    `json:"event_type_id"`
-		File        struct {
-			Disposition string `json:"disposition"`
-			FileName    string `json:"file_name"`
-			FilePath    string `json:"file_path"`
-			Identity    struct {
-				Sha256 string `json:"sha256"`
-			} `json:"identity"`
-			Parent struct {
-				Disposition string `json:"disposition"`
-				FileName    string `json:"file_name"`
-				Identity    struct {
-					Sha256 string `json:"sha256"`
-				} `json:"identity"`
-			} `json:"parent"`
-		} `json:"file"`
-		GroupGuids           []string `json:"group_guids"`
-		ID                   int      `json:"id"`
-		Timestamp            int      `json:"timestamp"`
-		TimestampNanoseconds int      `json:"timestamp_nanoseconds"`
-	} `json:"data"`
+	Version string `json:"version"`
 	Metadata struct {
 		Links struct {
-			Next string `json:"next"`
 			Self string `json:"self"`
+			Next string `json:"next"`
 		} `json:"links"`
 		Results struct {
 			CurrentItemCount int `json:"current_item_count"`
@@ -61,5 +25,38 @@ type FireAMP_Event struct {
 			Total            int `json:"total"`
 		} `json:"results"`
 	} `json:"metadata"`
-	Version string `json:"version"`
+	Data []struct {
+		ID                   int      `json:"id"`
+		Timestamp            int      `json:"timestamp"`
+		TimestampNanoseconds int      `json:"timestamp_nanoseconds"`
+		Date        string `json:"date"`
+		EventType   string `json:"event_type"`
+		EventTypeID int    `json:"event_type_id"`
+		Detection   string `json:"detection"`
+		//DetectionID string `json:"detection_id"`  # some records have int, some have string
+		GroupGuids           []string `json:"group_guids"`
+		Computer struct {
+			ConnectorGUID string `json:"connector_guid"`
+			Hostname      string `json:"hostname"`
+			User          string `json:"user"`
+			Active        bool   `json:"active"`
+			Links         struct {
+				Computer   string `json:"computer"`
+				Trajectory string `json:"trajectory"`
+				Group      string `json:"group"`
+			} `json:"links"`
+		} `json:"computer"`
+		File        struct {
+			Disposition string `json:"disposition"`
+			Identity    struct {
+				Sha256 string `json:"sha256"`
+				Sha1   string `json:"sha1"`
+				MD5    string `json:"md5"`
+			} `json:"identity"`
+			FileName    string `json:"file_name"`
+			FilePath    string `json:"file_path"`
+		} `json:"file"`
+		
+	} `json:"data"`
+
 }

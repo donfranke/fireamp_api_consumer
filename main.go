@@ -14,10 +14,13 @@ import (
 	"time"
 	"strconv"
 	"bufio"
+	_ "runtime/debug"
 )
 
-const C_INTERVAL = 60
+//const C_INTERVAL = 864000
+const C_INTERVAL = 300000
 
+const C_LIMIT = 3
 
 func main() {
 	log.Print("Starting")
@@ -38,6 +41,8 @@ func main() {
 func callAPI(clientID string, APIKey string) {
 	// 1. get events from FireAMP API
 	apiresult := getEvents(clientID,APIKey)
+	//fmt.Println(apiresult)
+	//os.Exit(0)
 	// 2. pass results of API call to create struct array
 	results := parseJSON(apiresult)
 	// 3. write to log file for splunk forwarder to pick up
@@ -53,14 +58,17 @@ func parseJSON(jsondata []byte) []Result{
 	res := &FireAMP_Event{}
 	err := json.Unmarshal([]byte(jsondata), res)
 	if err != nil {
+		//debug.PrintStack()
 		log.Fatal(err)
 	}
+	//_ = r
 	a1 := res.Data
 	for _, item := range a1 {
 		r.timestamp = item.Date
 		r.id = item.ID
 		r.event_type = item.EventType
 		r.computer = item.Computer.Hostname
+		r.computer = strings.ToLower(r.computer)
 		r.detection = item.Detection
 		r.disposition = item.File.Disposition
 		r.filename = item.File.FileName
@@ -88,7 +96,7 @@ func getEvents(clientid string, apikey string) []byte {
 	//fmt.Println(start_date)
 	//url := "https://api.amp.cisco.com/v1/computers?limit=1"
 	//url := "https://api.amp.cisco.com/v1/events?limit=1"
-	url := "https://api.amp.cisco.com/v1/events?limit=4&start_date=" + start_date + "&event_type[]=1090519054"
+	url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date + "&event_type[]=1090519054"
 	//url := "https://api.amp.cisco.com/v1/events?limit=8&start_date=" + start_date
 	fmt.Println(url)
 	req, err := http.NewRequest("GET", url, nil)
