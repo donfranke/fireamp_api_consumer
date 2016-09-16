@@ -4,8 +4,14 @@ Consumes event data from Cisco FireAMP API to push to Splunk
 
 # Usage
 ```
-go build && ./fireamp_api_consumer -c=[client id] -a=[api key]
+go build && ./fireamp_api_consumer -clientid=[client id] -apikey=[api key] -log=[destination log file]
 ```
+* apikey
+* clientid
+* log
 
 # Dependencies
 Access to Cisco FireAMP API
+
+# Notes
+Credential encoding is Base64(clientid:apikey) 

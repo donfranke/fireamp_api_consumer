@@ -14,20 +14,26 @@ import (
 	"time"
 	"strconv"
 	"bufio"
+
 )
 
-const C_INTERVAL = 300000
-const C_LIMIT = 3
+const C_INTERVAL = 600 // every 10 minutes
+const C_LIMIT = 10
 
 func main() {
 	log.Print("Starting")
 	ClientID := flag.String("clientid","", "3rd Party API Client ID")
 	APIKey := flag.String("apikey", "", "API Key")
 	LogFilePath := flag.String("log", "", "Log File Path")
+	var i int
+	
+	flag.IntVar(&i, "interval", 60, "Interval between automatic runs")
 	flag.Parse()
 
 	// stay resident, call at interval
 	for {
+		//strPointer := Interval
+		///ivl := strconv.ParseInt(strPointer,10,32)
 		callAPI(*ClientID,*APIKey,*LogFilePath)
 		time.Sleep(time.Second * C_INTERVAL)
 	}	
@@ -39,6 +45,7 @@ func callAPI(clientID string, APIKey string, LogFilePath string) {
 	// 2. pass results of API call to create struct array
 	results := parseJSON(apiresult)
 	// 3. write to log file for splunk forwarder to pick up
+	//fmt.Println(results)
 	pushToSplunk(results,LogFilePath)
 }
 
@@ -46,7 +53,6 @@ func parseJSON(jsondata []byte) []Result{
 	// sample data
 	r := Result{}
 	var results []Result
-
 	res := &FireAMP_Event{}
 	err := json.Unmarshal([]byte(jsondata), res)
 	if err != nil {
@@ -75,7 +81,9 @@ func getEvents(clientid string, apikey string) []byte {
 	t := time.Now()
 	then := t.Add(time.Second * C_INTERVAL * -1)
 	start_date := then.Format(time.RFC3339)
-	url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date + "&event_type[]=1090519054"
+	//url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date + "&event_type[]=1090519054"
+	url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date
+	fmt.Println(url)
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
@@ -94,7 +102,7 @@ func getEvents(clientid string, apikey string) []byte {
 func pushToSplunk(r []Result, LogFilePath string) {
 	f, err := os.OpenFile(LogFilePath, os.O_APPEND|os.O_WRONLY,0600)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	defer f.Close()
 	w := bufio.NewWriter(f)
