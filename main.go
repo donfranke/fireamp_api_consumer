@@ -14,10 +14,9 @@ import (
 	"time"
 	"strconv"
 	"bufio"
-
 )
 
-const C_INTERVAL = 600 // every 10 minutes
+const C_INTERVAL = 60000 // every 10 minutes
 const C_LIMIT = 10
 
 func main() {
@@ -30,7 +29,12 @@ func main() {
 	flag.IntVar(&i, "interval", 60, "Interval between automatic runs")
 	flag.Parse()
 
+	if *ClientID == "" || *APIKey == "" || *LogFilePath == ""  {
+		log.Fatal("EXECUTION HALTED: Not enough arguments supplied\n\n" + showUsage())
+	}
+
 	// stay resident, call at interval
+	log.Printf("Infinite loop started, interval is %d",C_INTERVAL)
 	for {
 		//strPointer := Interval
 		///ivl := strconv.ParseInt(strPointer,10,32)
@@ -41,11 +45,18 @@ func main() {
 
 func callAPI(clientID string, APIKey string, LogFilePath string) {
 	// 1. get events from FireAMP API
+	log.Print("getEvents()")
+
 	apiresult := getEvents(clientID,APIKey)
+
 	// 2. pass results of API call to create struct array
+	log.Print("parseJSON()")
+
 	results := parseJSON(apiresult)
 	// 3. write to log file for splunk forwarder to pick up
 	//fmt.Println(results)
+	log.Print("pushToSplunk()")
+
 	pushToSplunk(results,LogFilePath)
 }
 
@@ -83,7 +94,7 @@ func getEvents(clientid string, apikey string) []byte {
 	start_date := then.Format(time.RFC3339)
 	//url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date + "&event_type[]=1090519054"
 	url := "https://api.amp.cisco.com/v1/events?limit=" + strconv.Itoa(C_LIMIT) + "&start_date=" + start_date
-	fmt.Println(url)
+	log.Printf("API Call made to %s",url)
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
@@ -130,4 +141,12 @@ func decodeCredentials(inEncoded string) {
 	u := s[0]
 	p := s[1]
 	fmt.Printf("client id: %s, api credential: %s\n", u, p)
+}
+
+func showUsage() string {
+	var message string
+	message = "\t-clientid = Cisco FireAMP client ID\n"
+	message += "\t-apikey = Cisco FireAMP API Key\n"
+	message += "\t-log = path/file of log file\n"
+	return message
 }
